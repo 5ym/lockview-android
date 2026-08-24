@@ -5,7 +5,7 @@ buildscript {
     }
     dependencies {
         // AGP 9 は Kotlin のコンパイルを内蔵しているため kotlin-gradle-plugin の宣言は不要。
-        classpath 'com.android.tools.build:gradle:9.3.1'
+        classpath 'com.android.tools.build:gradle:9.3.2'
     }
 }
 
