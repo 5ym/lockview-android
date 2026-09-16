@@ -102,8 +102,12 @@ class MainActivity : AppCompatActivity() {
             request.deny()
             return
         }
-        // 応答待ちの要求が残っている場合は、古い方を取り下げて新しい方だけを扱う。
-        pendingPermissionRequest?.deny()
+        // 権限ダイアログを重ねて出さないよう、応答待ちの間は新しい要求を取り下げる。
+        // 拒否されたページは、必要であれば改めて要求してくる。
+        if (pendingPermissionRequest != null) {
+            request.deny()
+            return
+        }
         pendingPermissionRequest = request
         requestCameraPermission.launch(Manifest.permission.CAMERA)
     }
