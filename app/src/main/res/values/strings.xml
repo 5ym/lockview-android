@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Lockview</string>
-    <string name="camera_permission_required">許可されないとアプリが実行できません</string>
+    <string name="camera_permission_denied">カメラが許可されなかったため、ページのカメラ機能は使用できません</string>
 
     <string name="accessibility_service_label">Lockview キオスクモード</string>
     <string name="accessibility_service_description">ステータスバーとナビゲーションバーの操作を無効化してキオスクモードを維持します。</string>

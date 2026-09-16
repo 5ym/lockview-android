@@ -26,6 +26,7 @@ import io.doany.lockview.kiosk.KioskModeController
 import io.doany.lockview.kiosk.KioskSettings
 import io.doany.lockview.kiosk.SystemBarBlockerService
 import io.doany.lockview.kiosk.UnlockSequenceDetector
+import io.doany.lockview.kiosk.WebPermissionPolicy
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,13 +38,17 @@ class MainActivity : AppCompatActivity() {
 
     private var unlockDialog: AlertDialog? = null
 
+    /** カメラ権限の応答を待っている、ページからの権限要求。 */
+    private var pendingPermissionRequest: PermissionRequest? = null
+
     private val requestCameraPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                continueStartup()
-            } else {
-                Toast.makeText(this, R.string.camera_permission_required, Toast.LENGTH_LONG).show()
+            val request = pendingPermissionRequest ?: return@registerForActivityResult
+            pendingPermissionRequest = null
+            if (!granted) {
+                Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_LONG).show()
             }
+            respondToPermissionRequest(request, granted)
         }
 
     private val openSetup =
@@ -65,27 +70,57 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webview)
         configureWebView()
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            continueStartup()
-        } else {
-            requestCameraPermission.launch(Manifest.permission.CAMERA)
-        }
+        // カメラは表示するページが使う場合にのみ必要なので、ここでは要求しない。
+        continueStartup()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                // WebView 内でカメラを使うため、アプリに付与済みの権限をそのまま渡す。
-                request.grant(request.resources)
+                onWebPermissionRequest(request)
             }
         }
         webView.settings.javaScriptEnabled = true
         // Vue 等のフレームワークで使うため DOM Storage を有効化する。
         webView.settings.domStorageEnabled = true
     }
+
+    /**
+     * WebView 内のページからの権限要求を処理する。
+     *
+     * カメラ権限は、ページが実際に要求した時点で初めてユーザーへ求める。
+     * カメラを使わないページを表示するだけなら、権限を求めずに済む。
+     */
+    private fun onWebPermissionRequest(request: PermissionRequest) {
+        if (isCameraGranted()) {
+            respondToPermissionRequest(request, isCameraGranted = true)
+            return
+        }
+        if (!WebPermissionPolicy.requestsCamera(request.resources)) {
+            // カメラ以外は許可しないので、権限を求める必要もない。
+            request.deny()
+            return
+        }
+        // 応答待ちの要求が残っている場合は、古い方を取り下げて新しい方だけを扱う。
+        pendingPermissionRequest?.deny()
+        pendingPermissionRequest = request
+        requestCameraPermission.launch(Manifest.permission.CAMERA)
+    }
+
+    /** 許可してよいリソースだけを [PermissionRequest] へ返す。 */
+    private fun respondToPermissionRequest(request: PermissionRequest, isCameraGranted: Boolean) {
+        val allowed = WebPermissionPolicy.allowedResources(request.resources, isCameraGranted)
+        if (allowed.isEmpty()) {
+            request.deny()
+        } else {
+            request.grant(allowed)
+        }
+    }
+
+    private fun isCameraGranted(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun continueStartup() {
         val uri = intent.data
@@ -260,6 +295,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        pendingPermissionRequest?.deny()
+        pendingPermissionRequest = null
         unlockDialog?.dismiss()
         unlockDialog = null
         super.onDestroy()
