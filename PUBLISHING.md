@@ -19,7 +19,7 @@ Lockview を Google Play に掲載できるか、規約上の可否を調査し�
 以下は掲載を検討した際の調査記録です。方針を変える場合の資料として残します。
 
 なお、調査の過程で見つかった**ストア掲載と無関係に問題のある 2 箇所**(カメラ権限の
-要求方法と WebView の権限要求の無条件許可)は、掲載可否とは切り離して修正済みです。
+要求方法と WebView の権限要求の無条件許可)は、掲載可否とは切り離して #17 で対応しています。
 
 ## 結論
 
@@ -36,8 +36,8 @@ WebView からの権限要求の無条件許可)。いずれも修正可能で�
 | --- | --- | --- |
 | AccessibilityService の非アクセシビリティ利用 | 条件付きで可 | 開示・同意 UI の追加、Play Console 宣言、デモ動画 |
 | キオスクによる操作制限 | 要説明 | 解除手段の存在を審査で説明 |
-| カメラ権限の無条件要求 | ~~要修正~~ 対応済み | 必要時のみ要求へ変更 |
-| WebView の権限要求を無条件許可 | ~~要修正~~ 対応済み | 要求内容を検査してから許可 |
+| カメラ権限の無条件要求 | 要修正 (#17 で対応) | 必要時のみ要求へ変更 |
+| WebView の権限要求を無条件許可 | 要修正 (#17 で対応) | 要求内容を検査してから許可 |
 | WebView ラッパーとしての最低機能性 | 問題なし | ストア説明で用途を明示 |
 | AGPL-3.0 での配布 | 問題なし | — |
 | AAB / Play App Signing / targetSdk | 一部ギャップ | AAB ビルドの追加 |
@@ -96,7 +96,7 @@ AccessibilityService の利用がブロックされる変更が報じられて�
 機能そのものが将来の Android で動かなくなる可能性があります。この点は一次情報での再確認を
 推奨します。
 
-### 1.2 カメラ権限(要修正)
+### 1.2 カメラ権限(要修正 / #17 で対応)
 
 `MainActivity.onCreate` が起動直後に無条件で `CAMERA` を要求し、拒否されると起動を続行しません。
 
@@ -117,7 +117,7 @@ Google Play は、要求する権限がアプリの中核機能に必要であ�
 **対応**: WebView から `onPermissionRequest` が来た時点で初めて要求する形に変更します。
 マニフェストの `uses-feature android:required="false"` は既に適切です。
 
-### 1.3 WebView の権限要求(要修正)
+### 1.3 WebView の権限要求(要修正 / #17 で対応)
 
 ```kotlin
 override fun onPermissionRequest(request: PermissionRequest) {
@@ -182,8 +182,8 @@ GitHub Releases 用の APK ビルドは維持したまま、Play 用に AAB を�
 ### 3.1 コード側の修正
 
 1. `accessibility_service_config.xml` に `android:isAccessibilityTool="false"` を明示する
-2. `MainActivity` のカメラ権限要求を、WebView の `onPermissionRequest` 契機に変更する
-3. `onPermissionRequest` で要求リソースを検査し、付与済みのものだけを許可する
+2. `MainActivity` のカメラ権限要求を、WebView の `onPermissionRequest` 契機に変更する — #17 で対応
+3. `onPermissionRequest` で要求リソースを検査し、付与済みのものだけを許可する — #17 で対応
 4. ユーザー補助サービスの利用目的を説明し、同意を取る画面を追加する
    - 現状は `warnIfAccessibilityServiceDisabled()` がトーストで促すだけで、開示要件を満たさない
    - 初回設定フロー(`SetupActivity`)に組み込むのが自然
