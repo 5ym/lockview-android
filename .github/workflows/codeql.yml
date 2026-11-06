@@ -1,0 +1,58 @@
+name: CodeQL
+
+# CodeQL の解析 (advanced setup)。
+#
+# default setup をやめたのは、Java を autobuild するときの JDK が 17 で、このアプリ (Java 21) をビルドできないため。
+# build-mode: none (ビルドせずにソースだけ読む) では Android のコードを拾えない (「could not process any code」で落ちる)。
+# そこで Java はテストと同じ環境 (setup-build-env) でビルドして解析する。5ym/repo-config の共有の workflow は
+# C# のほかは none なので使わない。
+# 言語・クエリ (default)・category (/language:<言語>) は default setup と同じで、それまでのアラートを引き継ぐ。
+# default setup は切ってある (同時には使えない)。
+on:
+  push:
+    branches: [m]
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: java-kotlin
+            build-mode: manual
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - if: matrix.build-mode == 'manual'
+        uses: ./.github/actions/setup-build-env
+
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - if: matrix.build-mode == 'manual'
+        run: ./gradlew --no-daemon assembleDebug
+
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}
