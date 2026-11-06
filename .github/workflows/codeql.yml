@@ -1,0 +1,31 @@
+name: CodeQL
+
+# CodeQL の解析 (advanced setup)。中身は 5ym/repo-config の共有の workflow で、ほかのリポジトリと同じものを使う。
+#
+# default setup をやめたのは、Java を autobuild するときの JDK が 17 で、このアプリ (Java 21) をビルドできないため。
+# 共有の workflow は Java を build-mode: none (ビルドせずにソースだけ読む) で解析する。
+# 言語は default setup で解析していたものと同じ。default setup は切ってある (同時には使えない)。
+on:
+  push:
+    branches: [m]
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+    uses: 5ym/repo-config/.github/workflows/codeql.yml@main
+    with:
+      languages: '["actions", "java-kotlin"]'
